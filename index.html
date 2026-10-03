@@ -1,620 +1,487 @@
 <!DOCTYPE html>
-<html lang="ja" class="h-full bg-slate-900 text-slate-100">
+<html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>缶バッジトリミングツール (Badge Maker Studio)</title>
+  <title>缶バッジ専用 円形トリミング＆レイアウトツール</title>
   
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
   <!-- Cropper.js CSS -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
-  <!-- FontAwesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Google Fonts Inter & Noto Sans JP -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --primary-color: #4f46e5;
+      --primary-hover: #4338ca;
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-color: #1e293b;
+      --border-color: #e2e8f0;
+    }
 
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'Noto Sans JP', 'sans-serif'],
-          },
-          colors: {
-            brand: {
-              50: '#f0f9ff',
-              500: '#0ea5e9',
-              600: '#0284c7',
-              700: '#0369a1',
-            }
-          }
-        }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      line-height: 1.5;
+      padding: 24px 16px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    header h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    header p {
+      color: #64748b;
+      font-size: 0.95rem;
+      margin-top: 4px;
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+
+    @media (min-width: 900px) {
+      .main-grid {
+        grid-template-columns: 1.2fr 0.8fr;
       }
     }
-  </script>
 
-  <style>
-    /* Circular mask style for Cropper.js */
-    .cropper-view-box,
-    .cropper-face {
-      border-radius: 50% !important;
-    }
-    .cropper-view-box {
-      outline: 2px solid #0ea5e9 !important;
-      outline-color: rgba(14, 165, 233, 0.8) !important;
-    }
-    .cropper-dashed,
-    .cropper-point,
-    .cropper-line {
-      display: none !important;
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      border: 1px solid var(--border-color);
     }
 
-    /* Inner Safe-Zone Circle Overlay inside Cropper */
-    .badge-guide-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--bg-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* 編集エリア */
+    .editor-wrapper {
       width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 10;
+      height: 420px;
+      background-color: #0f172a;
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
     }
 
-    .badge-guide-inner {
-      border: 2px dashed rgba(239, 68, 68, 0.85); /* Red dashed line for visible area */
+    .editor-wrapper img {
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    /* Cropperを円形に見せるスタイル */
+    .cropper-view-box,
+    .cropper-face {
       border-radius: 50%;
-      box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.55); /* Darken surrounding bleed */
+    }
+
+    .cropper-view-box {
+      outline: 2px solid #3b82f6;
+      outline-color: rgba(59, 130, 246, 0.8);
+    }
+
+    /* 操作コントロール */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #ffffff;
+      border: 1px solid var(--border-color);
+      color: var(--text-color);
+      padding: 10px 16px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
       transition: all 0.2s ease;
     }
 
-    /* Badge 3D visual effect */
-    .badge-3d-effect {
-      background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0) 55%),
-                  radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 60%, rgba(0,0,0,0.3) 100%);
-      box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.5),
-                  inset 0 2px 4px rgba(255, 255, 255, 0.6),
-                  inset 0 -3px 6px rgba(0, 0, 0, 0.4);
+    .btn:hover {
+      background-color: #f1f5f9;
     }
 
-    /* Dropzone animation */
-    .drag-over {
-      border-color: #0ea5e9 !important;
-      background-color: rgba(14, 165, 233, 0.1) !important;
+    .btn-primary {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #334155;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 0.95rem;
+      background-color: #fff;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    /* プレビュー表示 */
+    .preview-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .badge-mockup {
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), inset 0 -3px 6px rgba(0,0,0,0.2), inset 0 3px 6px rgba(255,255,255,0.7);
+      background-size: cover;
+      background-position: center;
+      position: relative;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    /* ガイド情報メモ */
+    .info-box {
+      background-color: #eff6ff;
+      border-left: 4px solid #3b82f6;
+      padding: 12px;
+      font-size: 0.85rem;
+      color: #1e40af;
+      border-radius: 0 6px 6px 0;
+      margin-top: 12px;
+    }
+
+    .info-box ul {
+      margin-left: 16px;
+      margin-top: 4px;
+    }
+
+    .file-drop-area {
+      border: 2px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 30px;
+      text-align: center;
+      background-color: #f8fafc;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .file-drop-area:hover {
+      border-color: var(--primary-color);
+    }
+
+    .file-drop-area input[type="file"] {
+      display: none;
     }
   </style>
 </head>
+<body>
 
-<body class="h-full flex flex-col bg-slate-900 text-slate-100 font-sans antialiased selection:bg-brand-500 selection:text-white">
-
-  <!-- Top Navigation / Header -->
-  <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-30">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-      <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-brand-500/20">
-          <i class="fa-solid font-bold fa-circle-dot text-white text-xl"></i>
-        </div>
-        <div>
-          <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
-            缶バッジトリマー <span class="text-xs bg-brand-500/20 text-brand-500 border border-brand-500/30 font-medium px-2 py-0.5 rounded-full">v1.0</span>
-          </h1>
-          <p class="text-xs text-slate-400">缶バッジ用 円形トリミング & プレビューツール</p>
-        </div>
-      </div>
-
-      <!-- Action buttons in Header -->
-      <div class="flex items-center gap-3">
-        <button id="openGuideModalBtn" class="text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
-          <i class="fa-solid fa-circle-question text-brand-500"></i>
-          <span>使い方・作り方</span>
-        </button>
-      </div>
-    </div>
+<div class="container">
+  <header>
+    <h1>缶バッジ専用 トリミング＆作成ツール</h1>
+    <p>位置や顔のズームを目視で調整して缶バッジ用の円形画像を出力できます</p>
   </header>
 
-  <!-- Main Workbench Container -->
-  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col lg:flex-row gap-6 overflow-hidden">
-    
-    <!-- LEFT PANEL: Image Canvas / Editor -->
-    <div class="flex-1 flex flex-col bg-slate-950/50 border border-slate-800 rounded-2xl p-4 sm:p-6 relative min-h-[420px]">
-      
-      <!-- Upload Dropzone Overlay (Visible when no image) -->
-      <div id="dropzone" class="absolute inset-4 sm:inset-6 border-2 border-dashed border-slate-700 hover:border-brand-500 rounded-xl flex flex-col items-center justify-center p-6 transition-all duration-200 cursor-pointer bg-slate-900/40 hover:bg-slate-900/80 z-20">
-        <input type="file" id="fileInput" accept="image/*" class="hidden">
-        <div class="w-16 h-16 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-brand-500 mb-4 shadow-xl">
-          <i class="fa-solid fa-cloud-arrow-up text-2xl"></i>
-        </div>
-        <p class="text-base font-medium text-slate-200 mb-1 text-center">ここに画像をドラッグ＆ドロップ</p>
-        <p class="text-xs text-slate-400 mb-4 text-center">またはファイルを選択（PNG, JPG, WEBP に対応）</p>
-        <button type="button" onclick="document.getElementById('fileInput').click()" class="bg-brand-600 hover:bg-brand-500 text-white font-medium text-sm px-5 py-2.5 rounded-lg shadow-lg shadow-brand-600/30 transition flex items-center gap-2">
-          <i class="fa-regular fa-folder-open"></i> 画像ファイルを選択
-        </button>
+  <div class="main-grid">
+    <!-- 左側：画像読み込みと編集エリア -->
+    <div class="card">
+      <div class="card-title">
+        <span>1. 画像の調整</span>
       </div>
 
-      <!-- Editor Container (Hidden until image selected) -->
-      <div id="editorContainer" class="flex-1 flex flex-col hidden h-full">
-        <!-- Editor Header Info -->
-        <div class="flex items-center justify-between pb-3 border-b border-slate-800/80 mb-3 text-xs text-slate-400">
-          <div class="flex items-center gap-2">
-            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span>操作: ドラッグで位置調整 / ホイールで拡大縮小</span>
-          </div>
-          <button id="changeImageBtn" class="text-slate-400 hover:text-white hover:underline flex items-center gap-1">
-            <i class="fa-solid fa-arrows-rotate text-xs"></i> 別の画像に変更
-          </button>
-        </div>
+      <div id="dropArea" class="file-drop-area" onclick="document.getElementById('imageInput').click()">
+        <p style="font-weight: 600; color: #475569;">クリックして画像を選択</p>
+        <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 4px;">または画像をここにドラッグ＆ドロップ</p>
+        <input type="file" id="imageInput" accept="image/*">
+      </div>
 
-        <!-- Cropper Box -->
-        <div class="flex-1 relative min-h-[300px] sm:min-h-[400px] max-h-[550px] w-full bg-slate-900/90 rounded-lg overflow-hidden flex items-center justify-center border border-slate-800">
-          <img id="cropperImage" class="max-w-full block" alt="Source for cropping">
-          
-          <!-- Inner dashed guide circle (Injected/Adjusted dynamically via JS) -->
-          <div id="guideOverlay" class="badge-guide-overlay hidden">
-            <div id="guideInnerCircle" class="badge-guide-inner"></div>
-          </div>
-        </div>
+      <div class="editor-wrapper" id="editorWrapper" style="display: none; margin-top: 16px;">
+        <img id="sourceImage" src="" alt="編集用画像">
+      </div>
 
-        <!-- Image Control Toolbar -->
-        <div class="mt-4 grid grid-cols-2 sm:flex sm:flex-wrap items-center justify-between gap-2 bg-slate-900 p-3 rounded-xl border border-slate-800">
-          <!-- Zoom Controls -->
-          <div class="flex items-center gap-1">
-            <button id="zoomOutBtn" title="縮小" class="w-9 h-9 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition border border-slate-700">
-              <i class="fa-solid fa-magnifying-glass-minus"></i>
-            </button>
-            <button id="zoomInBtn" title="拡大" class="w-9 h-9 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition border border-slate-700">
-              <i class="fa-solid fa-magnifying-glass-plus"></i>
-            </button>
-            <span class="text-xs text-slate-400 ml-1">ズーム</span>
-          </div>
-
-          <!-- Rotation Controls -->
-          <div class="flex items-center gap-1">
-            <button id="rotateLeftBtn" title="左90度回転" class="w-9 h-9 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition border border-slate-700">
-              <i class="fa-solid fa-rotate-left"></i>
-            </button>
-            <button id="rotateRightBtn" title="右90度回転" class="w-9 h-9 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition border border-slate-700">
-              <i class="fa-solid fa-rotate-right"></i>
-            </button>
-            <span class="text-xs text-slate-400 ml-1">回転</span>
-          </div>
-
-          <!-- Flip Controls -->
-          <div class="flex items-center gap-1 col-span-2 sm:col-span-1 justify-end">
-            <button id="resetBtn" title="初期位置にリセット" class="px-3 h-9 flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition border border-slate-700 text-xs">
-              <i class="fa-solid fa-arrow-rotate-left"></i> リセット
-            </button>
-          </div>
-        </div>
+      <div class="controls-grid" id="controls" style="display: none;">
+        <button class="btn" onclick="rotateImage(-90)">↺ 左に回転</button>
+        <button class="btn" onclick="rotateImage(90)">↻ 右に回転</button>
+        <button class="btn" onclick="zoomImage(0.1)">＋ 拡大</button>
+        <button class="btn" onclick="zoomImage(-0.1)">－ 縮小</button>
+        <button class="btn" onclick="resetCrop()" style="grid-column: span 2;">位置のリセット</button>
       </div>
     </div>
 
-    <!-- RIGHT PANEL: Settings & 3D Preview -->
-    <div class="w-full lg:w-96 flex flex-col gap-6">
-      
-      <!-- Settings Card -->
-      <div class="bg-slate-950/50 border border-slate-800 rounded-2xl p-5 space-y-5">
-        <h2 class="text-sm font-semibold text-white uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-3">
-          <i class="fa-solid fa-sliders text-brand-500"></i> 缶バッジ設定
-        </h2>
+    <!-- 右側：設定と完成プレビュー -->
+    <div class="card">
+      <div class="card-title">
+        <span>2. サイズ設定・完成プレビュー</span>
+      </div>
 
-        <!-- Preset Size Selection -->
-        <div class="space-y-2">
-          <label class="text-xs font-medium text-slate-300 flex justify-between">
-            <span>缶バッジサイズ (仕上がりサイズ)</span>
-            <span id="badgeDimensionLabel" class="text-brand-500 font-semibold">57mm</span>
-          </label>
-          <div class="grid grid-cols-4 gap-2">
-            <button type="button" data-size="32" class="size-preset-btn px-2 py-2 text-xs font-medium bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-lg text-slate-300 text-center transition">
-              32mm
-            </button>
-            <button type="button" data-size="44" class="size-preset-btn px-2 py-2 text-xs font-medium bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-lg text-slate-300 text-center transition">
-              44mm
-            </button>
-            <button type="button" data-size="57" class="size-preset-btn active px-2 py-2 text-xs font-medium bg-brand-600 border border-brand-500 rounded-lg text-white text-center shadow-lg shadow-brand-600/20 transition">
-              57mm
-            </button>
-            <button type="button" data-size="75" class="size-preset-btn px-2 py-2 text-xs font-medium bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-lg text-slate-300 text-center transition">
-              75mm
-            </button>
-          </div>
-          <p id="sizeDetailText" class="text-[11px] text-slate-400 mt-1">
-            表面: 57mm / カット径: 70mm（巻き込み幅 各6.5mm）
-          </p>
+      <div class="form-group">
+        <label for="sizeSelect">缶バッジのサイズを選択</label>
+        <select id="sizeSelect" class="form-control" onchange="updateSizeParams()">
+          <option value="58" selected>58mm（標準サイズ）</option>
+          <option value="32">32mm（小サイズ）</option>
+          <option value="44">44mm（中サイズ）</option>
+          <option value="75">75mm（大サイズ）</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="showGuides" checked onchange="renderPreview()">
+          ガイド線（塗りたし外枠・表面境界線）を描画する
+        </label>
+      </div>
+
+      <div class="preview-container" style="margin-top: 20px;">
+        <div>
+          <p style="text-align:center; font-size: 0.85rem; color: #64748b; margin-bottom: 8px;">【仕上がり立体イメージ】</p>
+          <div id="badgeMockup" class="badge-mockup"></div>
         </div>
 
-        <!-- Output Resolution Preset -->
-        <div class="space-y-2">
-          <label class="text-xs font-medium text-slate-300">出力解像度 (印刷クオリティ)</label>
-          <select id="dpiSelect" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-lg p-2.5 focus:ring-2 focus:ring-brand-500 focus:outline-none">
-            <option value="300" selected>高解像度 (300 DPI - 印刷標準)</option>
-            <option value="600">超高解像度 (600 DPI - プレミアム品)</option>
-            <option value="150">標準 (150 DPI - 画面確認向け)</option>
-          </select>
-        </div>
-
-        <!-- Export Options / Toggles -->
-        <div class="space-y-3 pt-2 border-t border-slate-800/80">
-          <label class="flex items-center justify-between cursor-pointer">
-            <span class="text-xs text-slate-300">表面境界線（赤い点線）を表示</span>
-            <input type="checkbox" id="toggleGuideOverlayCheckbox" checked class="sr-only peer">
-            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-600 relative"></div>
-          </label>
-
-          <label class="flex items-center justify-between cursor-pointer">
-            <span class="text-xs text-slate-300">書き出し画像にガイド線を含める</span>
-            <input type="checkbox" id="includeGuideExportCheckbox" class="sr-only peer">
-            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-600 relative"></div>
-          </label>
-        </div>
-
-        <!-- Action Download Button -->
-        <button id="downloadBtn" disabled class="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-bold text-sm py-3 px-4 rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2">
-          <i class="fa-solid fa-download"></i> 缶バッジ用PNGを出力
+        <button id="downloadBtn" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 1rem;" disabled onclick="downloadBadgeImage()">
+          缶バッジ用PNG画像を保存
         </button>
       </div>
 
-      <!-- Real-time 3D Preview Box -->
-      <div class="bg-slate-950/50 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center relative overflow-hidden">
-        <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4 w-full text-left flex items-center gap-1.5">
-          <i class="fa-solid fa-eye text-brand-500"></i> 完成仕上がりイメージ
-        </h3>
-
-        <!-- Badge 3D Shell Container -->
-        <div class="relative w-48 h-48 sm:w-56 sm:h-56 my-2">
-          <!-- Shadow & Outer Border -->
-          <div id="badgeMockupContainer" class="w-full h-full rounded-full relative overflow-hidden border-4 border-slate-700/50 bg-slate-900 shadow-2xl transition-all duration-300">
-            <!-- Rendered Badge Canvas Output -->
-            <canvas id="previewCanvas" class="w-full h-full object-cover rounded-full"></canvas>
-            
-            <!-- Realistic Glossy 3D Highlight Overlay -->
-            <div class="absolute inset-0 rounded-full badge-3d-effect pointer-events-none"></div>
-          </div>
-        </div>
-        <p class="text-[11px] text-slate-400 text-center mt-2">
-          ※ 表面（表から見える範囲）の立体イメージです
-        </p>
-      </div>
-
-    </div>
-  </main>
-
-  <!-- Help Modal -->
-  <div id="guideModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
-      <button id="closeGuideModalBtn" class="absolute top-4 right-4 text-slate-400 hover:text-white w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
-      <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-        <i class="fa-solid fa-circle-info text-brand-500"></i> 缶バッジ用画像データについて
-      </h3>
-
-      <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
-        <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
-          <p class="font-semibold text-brand-500 mb-1">外円（カット線 / 巻き込み領域）</p>
-          <p>缶バッジマシンで包み込むための背景余白（塗りたし）です。ここにも背景色や画像が伸びている必要があります。</p>
-        </div>
-        <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
-          <p class="font-semibold text-red-400 mb-1">内円 (赤点線 / 表面有効デザイン範囲)</p>
-          <p>缶バッジの表面にそのまま表示されるメイン領域です。重要な顔や文字はこの点線の内側に収めるように配置してください。</p>
-        </div>
-        <ul class="list-disc pl-4 space-y-1 text-slate-400">
-          <li>ダウンロード画像は透過PNG形式で保存されます。</li>
-          <li>缶バッジパーツのメーカー指定に合わせてサイズ（32/44/57/75mm）を選択してください。</li>
+      <div class="info-box">
+        <strong>缶バッジ作成のポイント：</strong>
+        <ul>
+          <li><strong>赤い線（外枠）</strong>：カット位置（原稿全体のサイズ）</li>
+          <li><strong>青い線（内枠）</strong>：缶バッジの表面に見える部分</li>
+          <li>顔や文字などの重要な要素は青い枠の内側に配置してください。</li>
         </ul>
-      </div>
-
-      <div class="mt-6 text-right">
-        <button id="guideModalConfirmBtn" class="bg-brand-600 hover:bg-brand-500 text-white font-medium text-xs px-5 py-2.5 rounded-lg transition">
-          理解しました
-        </button>
       </div>
     </div>
   </div>
+</div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+<!-- Cropper.js JavaScript -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
-  <script>
-    // --- Badge Preset Specifications (Units in mm) ---
-    const BADGE_PRESETS = {
-      32: { surfaceMm: 32, cutMm: 44, bleedMarginMm: 6.0 },
-      44: { surfaceMm: 44, cutMm: 54, bleedMarginMm: 5.0 },
-      57: { surfaceMm: 57, cutMm: 70, bleedMarginMm: 6.5 },
-      75: { surfaceMm: 75, cutMm: 86, bleedMarginMm: 5.5 }
-    };
+<script>
+  let cropper = null;
+  const imageInput = document.getElementById('imageInput');
+  const sourceImage = document.getElementById('sourceImage');
+  const editorWrapper = document.getElementById('editorWrapper');
+  const dropArea = document.getElementById('dropArea');
+  const controls = document.getElementById('controls');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const badgeMockup = document.getElementById('badgeMockup');
 
-    let currentPresetSize = 57;
-    let cropper = null;
-    let originalImageSrc = null;
-
-    // DOM Elements
-    const fileInput = document.getElementById('fileInput');
-    const dropzone = document.getElementById('dropzone');
-    const editorContainer = document.getElementById('editorContainer');
-    const cropperImage = document.getElementById('cropperImage');
-    const guideOverlay = document.getElementById('guideOverlay');
-    const guideInnerCircle = document.getElementById('guideInnerCircle');
-    const previewCanvas = document.getElementById('previewCanvas');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const dpiSelect = document.getElementById('dpiSelect');
-    const badgeDimensionLabel = document.getElementById('badgeDimensionLabel');
-    const sizeDetailText = document.getElementById('sizeDetailText');
-    const toggleGuideOverlayCheckbox = document.getElementById('toggleGuideOverlayCheckbox');
-    const includeGuideExportCheckbox = document.getElementById('includeGuideExportCheckbox');
-
-    // Modal DOM Elements
-    const guideModal = document.getElementById('guideModal');
-    const openGuideModalBtn = document.getElementById('openGuideModalBtn');
-    const closeGuideModalBtn = document.getElementById('closeGuideModalBtn');
-    const guideModalConfirmBtn = document.getElementById('guideModalConfirmBtn');
-
-    // Drag and Drop Handling
-    ['dragenter', 'dragover'].forEach(eventName => {
-      dropzone.addEventListener(eventName, (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dropzone.classList.add('drag-over');
-      }, false);
-    });
-
-    ['dragleave', 'drop'].forEach(eventName => {
-      dropzone.addEventListener(eventName, (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dropzone.classList.remove('drag-over');
-      }, false);
-    });
-
-    dropzone.addEventListener('drop', (e) => {
-      const dt = e.dataTransfer;
-      const files = dt.files;
-      if (files && files.length > 0) {
-        handleFileSelect(files[0]);
-      }
-    });
-
-    fileInput.addEventListener('change', (e) => {
-      if (e.target.files && e.target.files.length > 0) {
-        handleFileSelect(e.target.files[0]);
-      }
-    });
-
-    document.getElementById('changeImageBtn').addEventListener('click', () => {
-      fileInput.click();
-    });
-
-    // Handle Image Loading
-    function handleFileSelect(file) {
-      if (!file.type.match('image.*')) {
-        alert('画像ファイル (PNG, JPG, WEBP) を選択してください。');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        originalImageSrc = e.target.result;
-        initCropper(originalImageSrc);
-      };
-      reader.readAsDataURL(file);
+  // 画像選択イベント
+  imageInput.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files[0]) {
+      loadImage(e.target.files[0]);
     }
+  });
 
-    function initCropper(imageSrc) {
-      // Hide dropzone, show editor
-      dropzone.classList.add('hidden');
-      editorContainer.classList.remove('hidden');
-      downloadBtn.disabled = false;
+  // ドラッグ＆ドロップ対応
+  dropArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropArea.style.borderColor = 'var(--primary-color)';
+  });
 
-      // Reset image src
-      cropperImage.src = imageSrc;
+  dropArea.addEventListener('dragleave', () => {
+    dropArea.style.borderColor = '#cbd5e1';
+  });
 
-      // Destroy previous cropper instance if exists
+  dropArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropArea.style.borderColor = '#cbd5e1';
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      loadImage(e.dataTransfer.files[0]);
+    }
+  });
+
+  function loadImage(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      sourceImage.src = e.target.result;
+      editorWrapper.style.display = 'flex';
+      controls.style.display = 'grid';
+      
       if (cropper) {
         cropper.destroy();
       }
 
-      // Initialize Cropper.js
-      cropper = new Cropper(cropperImage, {
-        aspectRatio: 1, // 1:1 Square/Circle ratio
+      // Cropper初期化
+      cropper = new Cropper(sourceImage, {
+        aspectRatio: 1, // 正円（1:1）
         viewMode: 1,
         dragMode: 'move',
         autoCropArea: 0.9,
         restore: false,
-        guides: false,
-        center: false,
+        guides: true,
+        center: true,
         highlight: false,
-        cropBoxMovable: false,
-        cropBoxResizable: false,
+        cropBoxMovable: true,
+        cropBoxResizable: true,
         toggleDragModeOnDblclick: false,
-        ready() {
-          updateGuideOverlayPosition();
-          updateLivePreview();
-        },
-        cropmove() {
-          updateLivePreview();
-        },
-        zoom() {
-          updateLivePreview();
-        },
         crop() {
-          updateLivePreview();
+          renderPreview();
         }
       });
-    }
 
-    function updateGuideOverlayPosition() {
-      if (!cropper) return;
+      downloadBtn.disabled = false;
+    };
+    reader.readAsDataURL(file);
+  }
 
-      const cropBox = cropper.getCropBoxData();
-      const container = document.querySelector('.cropper-container');
+  function rotateImage(degree) {
+    if (cropper) cropper.rotate(degree);
+  }
 
-      if (!cropBox || !container) return;
+  function zoomImage(ratio) {
+    if (cropper) cropper.zoom(ratio);
+  }
 
-      // Display overlay
-      guideOverlay.classList.remove('hidden');
+  function resetCrop() {
+    if (cropper) cropper.reset();
+  }
 
-      // Align overlay with cropper box
-      guideOverlay.style.left = `${cropBox.left}px`;
-      guideOverlay.style.top = `${cropBox.top}px`;
-      guideOverlay.style.width = `${cropBox.width}px`;
-      guideOverlay.style.height = `${cropBox.height}px`;
+  function updateSizeParams() {
+    if (cropper) renderPreview();
+  }
 
-      // Calculate inner surface area ratio
-      const spec = BADGE_PRESETS[currentPresetSize];
-      const innerRatio = spec.surfaceMm / spec.cutMm;
+  // キャンバスの描画処理（ガイド線・切り抜き）
+  function generateBadgeCanvas() {
+    if (!cropper) return null;
 
-      guideInnerCircle.style.width = `${innerRatio * 100}%`;
-      guideInnerCircle.style.height = `${innerRatio * 100}%`;
-
-      // Toggle overlay visibility based on checkbox
-      if (toggleGuideOverlayCheckbox.checked) {
-        guideOverlay.style.opacity = '1';
-      } else {
-        guideOverlay.style.opacity = '0';
-      }
-    }
-
-    // Preset Selection Handler
-    document.querySelectorAll('.size-preset-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.size-preset-btn').forEach(b => {
-          b.classList.remove('active', 'bg-brand-600', 'border-brand-500', 'text-white', 'shadow-lg');
-          b.classList.add('bg-slate-900', 'border-slate-800', 'text-slate-300');
-        });
-
-        const target = e.currentTarget;
-        target.classList.add('active', 'bg-brand-600', 'border-brand-500', 'text-white', 'shadow-lg');
-        target.classList.remove('bg-slate-900', 'border-slate-800', 'text-slate-300');
-
-        currentPresetSize = parseInt(target.getAttribute('data-size'));
-        
-        // Update labels
-        const spec = BADGE_PRESETS[currentPresetSize];
-        badgeDimensionLabel.textContent = `${spec.surfaceMm}mm`;
-        sizeDetailText.textContent = `表面: ${spec.surfaceMm}mm / カット径: ${spec.cutMm}mm（巻き込み幅 各${spec.bleedMarginMm}mm）`;
-
-        if (cropper) {
-          updateGuideOverlayPosition();
-          updateLivePreview();
-        }
-      });
+    // Cropperから高解像度の切り抜き範囲を取得 (1000x1000px基準)
+    const croppedCanvas = cropper.getCroppedCanvas({
+      width: 1000,
+      height: 1000,
+      imageSmoothingEnabled: true,
+      imageSmoothingQuality: 'high',
     });
 
-    toggleGuideOverlayCheckbox.addEventListener('change', () => {
-      updateGuideOverlayPosition();
-    });
+    const canvas = document.createElement('canvas');
+    canvas.width = 1000;
+    canvas.height = 1000;
+    const ctx = canvas.getContext('2d');
 
-    function updateLivePreview() {
-      if (!cropper) return;
+    // 1. 円形にマスク処理
+    ctx.beginPath();
+    ctx.arc(500, 500, 500, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
 
-      // Calculate resolution based on DPI and preset
-      const spec = BADGE_PRESETS[currentPresetSize];
-      const dpi = parseInt(dpiSelect.value);
+    // 2. 切り抜いた画像を描画
+    ctx.drawImage(croppedCanvas, 0, 0, 1000, 1000);
+
+    // 3. (任意) ガイド線の描画
+    const showGuides = document.getElementById('showGuides').checked;
+    if (showGuides) {
+      const size = document.getElementById('sizeSelect').value;
       
-      // mm to inch conversion: mm / 25.4
-      const cutPixelSize = Math.round((spec.cutMm / 25.4) * dpi);
-      
-      const croppedCanvas = cropper.getCroppedCanvas({
-        width: cutPixelSize,
-        height: cutPixelSize,
-        imageSmoothingEnabled: true,
-        imageSmoothingQuality: 'high',
-      });
+      // サイズごとの表面有効直径比率 (巻き込み領域を除く目安)
+      let surfaceRatio = 0.82; // 58mm基準 (表面58mm / 塗りたし含む外径70mm ≒ 0.82)
+      if (size === '32') surfaceRatio = 0.78;
+      if (size === '44') surfaceRatio = 0.80;
+      if (size === '75') surfaceRatio = 0.85;
 
-      if (!croppedCanvas) return;
+      const surfaceRadius = 500 * surfaceRatio;
 
-      // Set preview canvas size to Surface area dimension
-      const previewCtx = previewCanvas.getContext('2d');
-      previewCanvas.width = cutPixelSize;
-      previewCanvas.height = cutPixelSize;
-
-      // Clear Canvas
-      previewCtx.clearRect(0, 0, cutPixelSize, cutPixelSize);
-
-      // Clip as circle
-      previewCtx.save();
-      previewCtx.beginPath();
-      previewCtx.arc(cutPixelSize / 2, cutPixelSize / 2, cutPixelSize / 2, 0, Math.PI * 2);
-      previewCtx.closePath();
-      previewCtx.clip();
-
-      // Draw Cropped Image
-      previewCtx.drawImage(croppedCanvas, 0, 0, cutPixelSize, cutPixelSize);
-      previewCtx.restore();
-    }
-
-    downloadBtn.addEventListener('click', () => {
-      if (!cropper) return;
-
-      const spec = BADGE_PRESETS[currentPresetSize];
-      const dpi = parseInt(dpiSelect.value);
-      const cutPixelSize = Math.round((spec.cutMm / 25.4) * dpi);
-
-      // Get Cropped Base Canvas
-      const sourceCanvas = cropper.getCroppedCanvas({
-        width: cutPixelSize,
-        height: cutPixelSize,
-        imageSmoothingEnabled: true,
-        imageSmoothingQuality: 'high',
-      });
-
-      // Create Output Canvas
-      const outputCanvas = document.createElement('canvas');
-      outputCanvas.width = cutPixelSize;
-      outputCanvas.height = cutPixelSize;
-      const ctx = outputCanvas.getContext('2d');
-
-      // Render Circle Mask
-      ctx.save();
+      // 表面表示領域（青い線）
       ctx.beginPath();
-      ctx.arc(cutPixelSize / 2, cutPixelSize / 2, cutPixelSize / 2, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
-      ctx.drawImage(sourceCanvas, 0, 0, cutPixelSize, cutPixelSize);
-      ctx.restore();
+      ctx.arc(500, 500, surfaceRadius, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(59, 130, 246, 0.8)';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([12, 8]);
+      ctx.stroke();
 
-      // Optionally draw guide line on export
-      if (includeGuideExportCheckbox.checked) {
-        const innerRatio = spec.surfaceMm / spec.cutMm;
-        const innerRadius = (cutPixelSize * innerRatio) / 2;
-        
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(cutPixelSize / 2, cutPixelSize / 2, innerRadius, 0, Math.PI * 2);
-        ctx.setLineDash([cutPixelSize * 0.01, cutPixelSize * 0.01]);
-        ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
-        ctx.lineWidth = Math.max(2, cutPixelSize * 0.003);
-        ctx.stroke();
-        ctx.restore();
-      }
+      // 外径カットライン（赤い線）
+      ctx.beginPath();
+      ctx.arc(500, 500, 496, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([]);
+      ctx.stroke();
+    }
 
-      // Trigger File Download using standard anchor element
-      const link = document.createElement('a');
-      link.download = `badge_${spec.surfaceMm}mm_${dpi}dpi.png`;
-      link.href = outputCanvas.toDataURL('image/png');
-      link.click();
-    });
+    return canvas;
+  }
 
-    document.getElementById('zoomInBtn').addEventListener('click', () => cropper && cropper.zoom(0.1));
-    document.getElementById('zoomOutBtn').addEventListener('click', () => cropper && cropper.zoom(-0.1));
-    document.getElementById('rotateLeftBtn').addEventListener('click', () => cropper && cropper.rotate(-90));
-    document.getElementById('rotateRightBtn').addEventListener('click', () => cropper && cropper.rotate(90));
-    document.getElementById('resetBtn').addEventListener('click', () => cropper && cropper.reset());
-    dpiSelect.addEventListener('change', () => updateLivePreview());
+  // リアルタイムプレビュー更新
+  function renderPreview() {
+    const canvas = generateBadgeCanvas();
+    if (canvas) {
+      const dataUrl = canvas.toDataURL('image/png');
+      badgeMockup.style.backgroundImage = `url(${dataUrl})`;
+    }
+  }
 
-    // Window Resize Handler to recalculate guide circle positioning
-    window.addEventListener('resize', () => {
-      if (cropper) {
-        updateGuideOverlayPosition();
-      }
-    });
+  // 画像ダウンロード処理
+  function downloadBadgeImage() {
+    const canvas = generateBadgeCanvas();
+    if (!canvas) return;
 
-    openGuideModalBtn.addEventListener('click', () => guideModal.classList.remove('hidden'));
-    closeGuideModalBtn.addEventListener('click', () => guideModal.classList.add('hidden'));
-    guideModalConfirmBtn.addEventListener('click', () => guideModal.classList.add('hidden'));
-  </script>
+    const size = document.getElementById('sizeSelect').value;
+    const link = document.createElement('a');
+    link.download = `badge_${size}mm_cropped.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }
+</script>
+
 </body>
 </html>
