@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>缶バッジ専用 トリミング＆印刷ツール</title>
+  <title>缶バッジ専用 トリミング＆A4実寸印刷ツール</title>
   
   <!-- Cropper.js CSS -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
@@ -249,19 +249,29 @@
       display: none;
     }
 
-    /* 印刷領域の設定（画面上は非表示） */
+    /* 画面上は非表示の印刷専用領域 */
     #printArea {
       display: none;
     }
 
     /* ----------------------------------
-       印刷用の専用CSS (@media print)
+       A4実寸印刷用の専用CSS (@media print)
     ----------------------------------- */
     @media print {
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+
+      body {
+        background: #fff !important;
+        padding: 0 !important;
+      }
+
       body * {
         visibility: hidden;
       }
-      
+
       #printArea, #printArea * {
         visibility: visible;
       }
@@ -274,19 +284,22 @@
         position: absolute;
         left: 0;
         top: 0;
-        width: 100%;
-        height: 100%;
+        width: 210mm;
+        height: 297mm;
       }
 
       #printImage {
-        max-width: 100%;
-        height: auto;
+        /* 実寸ミリメートル指定（JavaScriptで切り替え） */
+        width: 70mm;
+        height: 70mm;
+        object-fit: contain;
       }
 
       .print-note {
-        margin-top: 15px;
-        font-size: 12px;
+        margin-top: 10mm;
+        font-size: 11pt;
         color: #333;
+        font-family: sans-serif;
       }
     }
   </style>
@@ -295,8 +308,8 @@
 
 <div class="container">
   <header>
-    <h1>缶バッジ専用 トリミング＆印刷ツール</h1>
-    <p>位置や顔のズームを目視で調整して缶バッジ用の円形画像を出力・印刷できます</p>
+    <h1>缶バッジ専用 トリミング＆A4実寸印刷ツール</h1>
+    <p>目視で位置を調整して缶バッジ用の円形画像を出力・A4原寸印刷できます</p>
   </header>
 
   <div class="main-grid">
@@ -334,10 +347,10 @@
       <div class="form-group">
         <label for="sizeSelect">缶バッジのサイズを選択</label>
         <select id="sizeSelect" class="form-control" onchange="updateSizeParams()">
-          <option value="58" selected>58mm（標準サイズ）</option>
-          <option value="32">32mm（小サイズ）</option>
-          <option value="44">44mm（中サイズ）</option>
-          <option value="75">75mm（大サイズ）</option>
+          <option value="58" selected>58mm（標準サイズ / 印刷外径約70mm）</option>
+          <option value="32">32mm（小サイズ / 印刷外径約44mm）</option>
+          <option value="44">44mm（中サイズ / 印刷外径約54mm）</option>
+          <option value="75">75mm（大サイズ / 印刷外径約86mm）</option>
         </select>
       </div>
 
@@ -360,17 +373,16 @@
           </button>
           
           <button id="printBtn" class="btn btn-success" style="padding: 12px; font-size: 1rem;" disabled onclick="printBadgeImage()">
-            🖨️ 印刷する（原稿サイズ）
+            🖨️ A4用紙に実寸印刷する
           </button>
         </div>
       </div>
 
       <div class="info-box">
-        <strong>缶バッジ作成のポイント：</strong>
+        <strong>A4実寸印刷の重要ポイント：</strong>
         <ul>
-          <li><strong>赤い線（外枠）</strong>：カット位置（原稿全体のサイズ）</li>
-          <li><strong>青い線（内枠）</strong>：缶バッジの表面に見える部分</li>
-          <li>印刷時はプリンターの設定で「100% (実際のサイズ)」を選択してください。</li>
+          <li>印刷プレビュー画面で <strong>「ページに合わせる」のチェックを外す</strong> か、倍率を <strong>「100%（実際のサイズ）」</strong> に設定してください。</li>
+          <li>外枠の赤い線に沿って切り取ると缶バッジマシンにピッタリのサイズになります。</li>
         </ul>
       </div>
     </div>
@@ -380,7 +392,7 @@
 <!-- 印刷用隠し領域 -->
 <div id="printArea">
   <img id="printImage" src="" alt="印刷用画像">
-  <p class="print-note">※缶バッジ作成用原稿データ</p>
+  <p class="print-note" id="printNoteText">【A4実寸原稿】58mm缶バッジ用（原稿外径 70mm）</p>
 </div>
 
 <!-- Cropper.js JavaScript -->
@@ -397,14 +409,18 @@
   const printBtn = document.getElementById('printBtn');
   const badgeMockup = document.getElementById('badgeMockup');
 
-  // 画像選択イベント
+  // サイズ別の原稿外径（巻き込み部分を含めたカット線サイズ mm）
+  const SIZE_MAP = {
+    '58': { outerMm: 70, surfaceRatio: 0.82, name: '58mm缶バッジ用' },
+    '32': { outerMm: 44, surfaceRatio: 0.78, name: '32mm缶バッジ用' },
+    '44': { outerMm: 54, surfaceRatio: 0.80, name: '44mm缶バッジ用' },
+    '75': { outerMm: 86, surfaceRatio: 0.85, name: '75mm缶バッジ用' }
+  };
+
   imageInput.addEventListener('change', (e) => {
-    if (e.target.files && e.target.files[0]) {
-      loadImage(e.target.files[0]);
-    }
+    if (e.target.files && e.target.files[0]) loadImage(e.target.files[0]);
   });
 
-  // ドラッグ＆ドロップ対応
   dropArea.addEventListener('dragover', (e) => {
     e.preventDefault();
     dropArea.style.borderColor = 'var(--primary-color)';
@@ -417,9 +433,7 @@
   dropArea.addEventListener('drop', (e) => {
     e.preventDefault();
     dropArea.style.borderColor = '#cbd5e1';
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      loadImage(e.dataTransfer.files[0]);
-    }
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) loadImage(e.dataTransfer.files[0]);
   });
 
   function loadImage(file) {
@@ -429,13 +443,10 @@
       editorWrapper.style.display = 'flex';
       controls.style.display = 'grid';
       
-      if (cropper) {
-        cropper.destroy();
-      }
+      if (cropper) cropper.destroy();
 
-      // Cropper初期化
       cropper = new Cropper(sourceImage, {
-        aspectRatio: 1, // 正円（1:1）
+        aspectRatio: 1,
         viewMode: 1,
         dragMode: 'move',
         autoCropArea: 0.9,
@@ -473,58 +484,48 @@
     if (cropper) renderPreview();
   }
 
-  // キャンバスの描画処理（ガイド線・切り抜き）
   function generateBadgeCanvas() {
     if (!cropper) return null;
 
-    // Cropperから高解像度の切り抜き範囲を取得 (1000x1000px基準)
     const croppedCanvas = cropper.getCroppedCanvas({
-      width: 1000,
-      height: 1000,
+      width: 1200,
+      height: 1200,
       imageSmoothingEnabled: true,
       imageSmoothingQuality: 'high',
     });
 
     const canvas = document.createElement('canvas');
-    canvas.width = 1000;
-    canvas.height = 1000;
+    canvas.width = 1200;
+    canvas.height = 1200;
     const ctx = canvas.getContext('2d');
 
-    // 1. 円形にマスク処理
+    // 円形マスク
     ctx.beginPath();
-    ctx.arc(500, 500, 500, 0, Math.PI * 2);
+    ctx.arc(600, 600, 600, 0, Math.PI * 2);
     ctx.closePath();
     ctx.clip();
 
-    // 2. 切り抜いた画像を描画
-    ctx.drawImage(croppedCanvas, 0, 0, 1000, 1000);
+    ctx.drawImage(croppedCanvas, 0, 0, 1200, 1200);
 
-    // 3. (任意) ガイド線の描画
     const showGuides = document.getElementById('showGuides').checked;
     if (showGuides) {
-      const size = document.getElementById('sizeSelect').value;
-      
-      // サイズごとの表面有効直径比率
-      let surfaceRatio = 0.82; // 58mm基準
-      if (size === '32') surfaceRatio = 0.78;
-      if (size === '44') surfaceRatio = 0.80;
-      if (size === '75') surfaceRatio = 0.85;
+      const sizeKey = document.getElementById('sizeSelect').value;
+      const sizeInfo = SIZE_MAP[sizeKey] || SIZE_MAP['58'];
+      const surfaceRadius = 600 * sizeInfo.surfaceRatio;
 
-      const surfaceRadius = 500 * surfaceRatio;
-
-      // 表面表示領域（青い線）
+      // 表面有効範囲（青い点線）
       ctx.beginPath();
-      ctx.arc(500, 500, surfaceRadius, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(59, 130, 246, 0.8)';
+      ctx.arc(600, 600, surfaceRadius, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(59, 130, 246, 0.85)';
       ctx.lineWidth = 4;
-      ctx.setLineDash([12, 8]);
+      ctx.setLineDash([15, 10]);
       ctx.stroke();
 
-      // 外径カットライン（赤い線）
+      // 外径カットライン（赤い実線）
       ctx.beginPath();
-      ctx.arc(500, 500, 496, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
-      ctx.lineWidth = 4;
+      ctx.arc(600, 600, 595, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.85)';
+      ctx.lineWidth = 5;
       ctx.setLineDash([]);
       ctx.stroke();
     }
@@ -532,36 +533,42 @@
     return canvas;
   }
 
-  // リアルタイムプレビュー更新
   function renderPreview() {
     const canvas = generateBadgeCanvas();
     if (canvas) {
-      const dataUrl = canvas.toDataURL('image/png');
-      badgeMockup.style.backgroundImage = `url(${dataUrl})`;
+      badgeMockup.style.backgroundImage = `url(${canvas.toDataURL('image/png')})`;
     }
   }
 
-  // 画像ダウンロード処理
   function downloadBadgeImage() {
     const canvas = generateBadgeCanvas();
     if (!canvas) return;
 
-    const size = document.getElementById('sizeSelect').value;
+    const sizeKey = document.getElementById('sizeSelect').value;
     const link = document.createElement('a');
-    link.download = `badge_${size}mm_cropped.png`;
+    link.download = `badge_${sizeKey}mm_cropped.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
   }
 
-  // 印刷処理
+  // A4実寸印刷処理
   function printBadgeImage() {
     const canvas = generateBadgeCanvas();
     if (!canvas) return;
 
+    const sizeKey = document.getElementById('sizeSelect').value;
+    const sizeInfo = SIZE_MAP[sizeKey] || SIZE_MAP['58'];
+
     const printImage = document.getElementById('printImage');
+    const printNoteText = document.getElementById('printNoteText');
+
+    // 印刷用CSS要素のミリメートル幅を直接セット
+    printImage.style.width = `${sizeInfo.outerMm}mm`;
+    printImage.style.height = `${sizeInfo.outerMm}mm`;
     printImage.src = canvas.toDataURL('image/png');
 
-    // 画像の読み込み完了後に印刷ダイアログを呼び出し
+    printNoteText.textContent = `【A4実寸原稿】${sizeInfo.name}（カット外径 ${sizeInfo.outerMm}mm）`;
+
     printImage.onload = () => {
       window.print();
     };
